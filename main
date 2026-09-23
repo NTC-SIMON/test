@@ -1,0 +1,44 @@
+# Laboratory #4: Build a Secure Login System with Testing
+**Fintech Scenario | Phase 1: Design Documentation**[cite: 1]
+
+This document outlines the architectural design, user flow, state management, and accessibility considerations for the secure fintech login system.
+
+---
+
+## 1. Sequence Diagram
+The sequence diagram below demonstrates the secure authentication workflow, emphasizing input validation, prepared statements (preventing SQL injection), password hashing verification, and account lockout tracking.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Frontend as UI / Client
+    participant Auth as Auth Controller
+    participant DB as Secure Database
+
+    User->>Frontend: Enter username & password
+    Frontend->>Auth: POST /login (username, password)
+    Auth->>Auth: Validate empty fields / Sanitize input
+    alt Empty fields detected
+        Auth-->>Frontend: Error: Fields cannot be empty
+        Frontend-->>User: Display inline error
+    else Input validated
+        Auth->>DB: Query user via Prepared Statement (prevent SQLi)
+        DB-->>Auth: Return user record (hash, attempts, lockout status)
+        Auth->>Auth: Check account lockout status
+        alt Locked Out
+            Auth-->>Frontend: Error: Too many attempts. Account locked.
+            Frontend-->>User: Display lockout notice + timer
+        else Active Account
+            Auth->>Auth: Verify password hash (Bcrypt)
+            alt Password Match
+                Auth->>DB: Reset failed_attempts = 0
+                Auth-->>Frontend: Success: Session Token Issued
+                Frontend-->>User: Redirect to Dashboard
+            else Password Mismatch
+                Auth->>DB: Increment failed_attempts + 1
+                Auth-->>Frontend: Error: Invalid credentials
+                Frontend-->>User: Display generic error message
+            end
+        end
+    end
